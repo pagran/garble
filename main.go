@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"log"
 	mathrand "math/rand"
+	"mvdan.cc/garble/internal/junk"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,6 +51,7 @@ var (
 
 var (
 	flagLiterals bool
+	flagJunkCode int
 	flagTiny     bool
 	flagDebug    bool
 	flagDebugDir string
@@ -58,6 +60,7 @@ var (
 
 func init() {
 	flagSet.Usage = usage
+	flagSet.IntVar(&flagJunkCode, "junk", 0, "Inject junk code, 0 = disable")
 	flagSet.BoolVar(&flagLiterals, "literals", false, "Obfuscate literals such as strings")
 	flagSet.BoolVar(&flagTiny, "tiny", false, "Optimize for binary size, losing some ability to reverse the process")
 	flagSet.BoolVar(&flagDebug, "debug", false, "Print debug logs to stderr")
@@ -1425,6 +1428,10 @@ func (tf *transformer) transformGo(filename string, file *ast.File) *ast.File {
 	// and that's not allowed in the runtime itself.
 	if flagLiterals && curPkg.ToObfuscate {
 		file = literals.Obfuscate(file, tf.info, fset, tf.linkerVariableStrings)
+	}
+
+	if flagJunkCode > 0 && curPkg.ToObfuscate {
+		file = junk.Obfuscate(file, flagJunkCode)
 	}
 
 	pre := func(cursor *astutil.Cursor) bool {

@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -123,6 +124,10 @@ func appendFlags(w io.Writer, forBuildHash bool) {
 	}
 	if flagDebug {
 		io.WriteString(w, " -debug")
+	}
+	if flagJunkCode > 0 {
+		io.WriteString(w, " -junk ")
+		io.WriteString(w, strconv.Itoa(flagJunkCode))
 	}
 	if flagDebugDir != "" && !forBuildHash {
 		// -debugdir is a bit special.
