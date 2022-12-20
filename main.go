@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"log"
 	mathrand "math/rand"
+	"mvdan.cc/garble/internal/link"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -51,6 +52,7 @@ var (
 	flagDebug    bool
 	flagDebugDir string
 	flagSeed     seedFlag
+	flagLink     bool
 )
 
 func init() {
@@ -60,9 +62,10 @@ func init() {
 	flagSet.BoolVar(&flagDebug, "debug", false, "Print debug logs to stderr")
 	flagSet.StringVar(&flagDebugDir, "debugdir", "", "Write the obfuscated source to a directory, e.g. -debugdir=out")
 	flagSet.Var(&flagSeed, "seed", "Provide a base64-encoded seed, e.g. -seed=o9WDTZ4CN4w\nFor a random seed, provide -seed=random")
+	flagSet.BoolVar(&flagLink, "link", false, "Enable advanced link hook")
 }
 
-var rxGarbleFlag = regexp.MustCompile(`-(?:literals|tiny|debug|debugdir|seed)(?:$|=)`)
+var rxGarbleFlag = regexp.MustCompile(`-(?:literals|tiny|debug|debugdir|seed|link)(?:$|=)`)
 
 type seedFlag struct {
 	random bool
@@ -408,6 +411,11 @@ func mainErr(args []string) error {
 			return alterToolVersion(tool, args)
 		}
 
+		// TODO(linker): Rewrite, too hacky
+		if flagLink && tool == "link" {
+			args[0] = cache.LinkInfo.ExecPath
+		}
+
 		toolexecImportPath := os.Getenv("TOOLEXEC_IMPORTPATH")
 		curPkg = cache.ListedPackages[toolexecImportPath]
 		if curPkg == nil {
@@ -509,10 +517,38 @@ This command wraps "go %s". Below is its help:
 		return nil, err
 	}
 
-	sharedTempDir, err = saveSharedCache()
+	sharedTempDir, err = os.MkdirTemp("", "garble-shared")
 	if err != nil {
 		return nil, err
 	}
+
+	if flagLink {
+		// TODO(linker): Rewrite custom linker path logic
+		info, _ := debug.ReadBuildInfo()
+		patchVersion := link.PatchesVersion()
+
+		var tmp bytes.Buffer
+		tmp.WriteString(cache.GoEnv.GOVERSION)
+		tmp.WriteString(info.Main.Version)
+		tmp.WriteString(patchVersion)
+
+		linkName := "garble-link-" + hashWithCustomSalt(tmp.Bytes(), "link")
+		linkerPath := filepath.Join(filepath.Dir(cache.ExecPath), linkName)
+		if runtime.GOOS == "windows" {
+			linkerPath += ".exe"
+		}
+		if err := link.PrepareModifiedLinker(cache.GoEnv.GOROOT, sharedTempDir, linkerPath); err != nil {
+			return nil, fmt.Errorf("error compile cmd/link: %v", err)
+		}
+		cache.LinkInfo.ExecPath = linkerPath
+		cache.LinkInfo.MagicValue = int(mathrand.Int31())
+		os.Setenv("GARBLELNK_MAGIC", strconv.Itoa(cache.LinkInfo.MagicValue)) // TODO(linker): Rewrite parameter pass to linker
+	}
+
+	if err = saveSharedCache(); err != nil {
+		return nil, err
+	}
+
 	os.Setenv("GARBLE_SHARED", sharedTempDir)
 	wd, err := os.Getwd()
 	if err != nil {
@@ -869,10 +905,15 @@ func transformCompile(args []string) ([]string, error) {
 	for i, file := range files {
 		basename := filepath.Base(paths[i])
 		log.Printf("obfuscating %s", basename)
-		if curPkg.ImportPath == "runtime" && flagTiny {
-			// strip unneeded runtime code
-			stripRuntime(basename, file)
-			tf.removeUnnecessaryImports(file)
+		if curPkg.ImportPath == "runtime" {
+			if flagLink {
+				link.ApplyRuntimeMagicValue(basename, cache.LinkInfo.MagicValue, file)
+			}
+			if flagTiny {
+				// strip unneeded runtime code
+				stripRuntime(basename, file)
+				tf.removeUnnecessaryImports(file)
+			}
 		}
 		tf.handleDirectives(file.Comments)
 		file = tf.transformGo(file)
@@ -2202,7 +2243,7 @@ func flagSetValue(flags []string, name, value string) []string {
 func fetchGoEnv() error {
 	out, err := exec.Command("go", "env", "-json",
 		// Keep in sync with sharedCache.GoEnv.
-		"GOOS", "GOMOD", "GOVERSION",
+		"GOOS", "GOMOD", "GOVERSION", "GOROOT",
 	).CombinedOutput()
 	if err != nil {
 		// TODO: cover this in the tests.

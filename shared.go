@@ -25,7 +25,8 @@ import (
 // store it into a temporary file via gob encoding, and then reuse that file
 // in each of the garble toolexec sub-processes.
 type sharedCache struct {
-	ExecPath          string   // absolute path to the garble binary being used
+	ExecPath string // absolute path to the garble binary being used
+
 	ForwardBuildFlags []string // build flags fed to the original "garble ..." command
 
 	// ListedPackages contains data obtained via 'go list -json -export -deps'.
@@ -50,6 +51,12 @@ type sharedCache struct {
 
 		GOMOD     string
 		GOVERSION string
+		GOROOT    string
+	}
+
+	LinkInfo struct {
+		ExecPath   string // absolute path to the modified link binary, emoty if modified linker not used
+		MagicValue int
 	}
 }
 
@@ -77,20 +84,15 @@ func loadSharedCache() error {
 
 // saveSharedCache creates a temporary directory to share between garble processes.
 // This directory also includes the gob-encoded cache global.
-func saveSharedCache() (string, error) {
+func saveSharedCache() error {
 	if cache == nil {
 		panic("saving a missing cache?")
 	}
-	dir, err := os.MkdirTemp("", "garble-shared")
-	if err != nil {
-		return "", err
-	}
-
-	sharedCache := filepath.Join(dir, "main-cache.gob")
+	sharedCache := filepath.Join(sharedTempDir, "main-cache.gob")
 	if err := writeGobExclusive(sharedCache, &cache); err != nil {
-		return "", err
+		return err
 	}
-	return dir, nil
+	return nil
 }
 
 func createExclusive(name string) (*os.File, error) {

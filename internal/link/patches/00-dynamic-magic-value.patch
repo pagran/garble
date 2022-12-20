@@ -1,0 +1,24 @@
+Index: link/internal/ld/pcln.go
+<+>UTF-8
+===================================================================
+diff --git a/link/internal/ld/pcln.go b/link/internal/ld/pcln.go
+--- a/link/internal/ld/pcln.go	(revision 5fca05073d47a02f538df8fd097ab7eda751bc0d)
++++ b/link/internal/ld/pcln.go	(date 1671541094000)
+@@ -14,6 +14,7 @@
+ 	"internal/buildcfg"
+ 	"os"
+ 	"path/filepath"
++	"strconv"
+ 	"strings"
+ )
+
+@@ -222,7 +223,8 @@
+
+ 		// Write header.
+ 		// Keep in sync with runtime/symtab.go:pcHeader and package debug/gosym.
+-		header.SetUint32(ctxt.Arch, 0, 0xfffffff0)
++		magic, _ := strconv.ParseInt(os.Getenv("GARBLELNK_MAGIC"), 10, 32)
++		header.SetUint32(ctxt.Arch, 0, uint32(magic))
+ 		header.SetUint8(ctxt.Arch, 6, uint8(ctxt.Arch.MinLC))
+ 		header.SetUint8(ctxt.Arch, 7, uint8(ctxt.Arch.PtrSize))
+ 		off := header.SetUint(ctxt.Arch, 8, uint64(state.nfunc))

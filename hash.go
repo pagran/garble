@@ -143,6 +143,12 @@ func appendFlags(w io.Writer, forBuildHash bool) {
 		io.WriteString(w, " -seed=")
 		io.WriteString(w, flagSeed.String())
 	}
+	if flagLink {
+		io.WriteString(w, " -link")
+		if forBuildHash {
+			io.WriteString(w, cache.LinkInfo.ExecPath)
+		}
+	}
 }
 
 // buildIDComponentLength is the number of bytes each build ID component takes,
