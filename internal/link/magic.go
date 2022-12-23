@@ -7,7 +7,7 @@ import (
 )
 
 func ApplyRuntimeMagicValue(basename string, magicValue int, file *ast.File) {
-	if basename != "symtab.go" {
+	if basename != "Xsymtab.go" {
 		return
 	}
 

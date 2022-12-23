@@ -1,0 +1,15 @@
+Index: link/internal/ld/pcln.go
+<+>UTF-8
+===================================================================
+diff --git a/link/internal/ld/pcln.go b/link/internal/ld/pcln.go
+--- a/link/internal/ld/pcln.go	(revision 5fca05073d47a02f538df8fd097ab7eda751bc0d)
++++ b/link/internal/ld/pcln.go	(date 1671738048000)
+@@ -388,7 +388,7 @@
+ 	// file index we've seen per CU so we can calculate how large the
+ 	// CU->global table needs to be.
+ 	var fileSize int64
+-	walkFilenames(ctxt, funcs, func(cu *sym.CompilationUnit, i goobj.CUFileIndex) {
++	walkFilenames(ctxt, funcs[:0], func(cu *sym.CompilationUnit, i goobj.CUFileIndex) {
+ 		// Note we use the raw filename for lookup, but use the expanded filename
+ 		// when we save the size.
+ 		filename := cu.FileTable[i]
