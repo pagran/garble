@@ -16,7 +16,7 @@ type shuffle struct{}
 // check that the obfuscator interface is implemented
 var _ obfuscator = shuffle{}
 
-func (shuffle) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
+func (shuffle) obfuscate(obfRand *mathrand.Rand, data []byte) (*ast.BlockStmt, []externalKey) {
 	key := make([]byte, len(data))
 	obfRand.Read(key)
 
@@ -86,5 +86,5 @@ func (shuffle) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
 			Tok: token.ASSIGN,
 			Rhs: []ast.Expr{ah.CallExpr(ast.NewIdent("append"), args...)},
 		},
-	)
+	), nil
 }

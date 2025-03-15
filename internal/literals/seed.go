@@ -16,7 +16,7 @@ type seed struct{}
 // check that the obfuscator interface is implemented
 var _ obfuscator = seed{}
 
-func (seed) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
+func (seed) obfuscate(obfRand *mathrand.Rand, data []byte) (*ast.BlockStmt, []externalKey) {
 	seed := byte(obfRand.Uint32())
 	originalSeed := seed
 
@@ -112,5 +112,5 @@ func (seed) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
 			},
 		},
 		ah.ExprStmt(callExpr),
-	)
+	), nil
 }

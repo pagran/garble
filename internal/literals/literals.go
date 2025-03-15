@@ -213,34 +213,37 @@ func withPos(node ast.Node, pos token.Pos) ast.Node {
 
 func obfuscateString(obfRand *obfRand, data string) *ast.CallExpr {
 	obf := getNextObfuscator(obfRand, len(data))
-	block := obf.obfuscate(obfRand.Rand, []byte(data))
+	block, extKeys := obf.obfuscate(obfRand.Rand, []byte(data))
+	params, args := externalKeysToParams(obfRand.Rand, extKeys)
 
 	block.List = append(block.List, ah.ReturnStmt(ah.CallExpr(ast.NewIdent("string"), ast.NewIdent("data"))))
 
-	return ah.LambdaCall(ast.NewIdent("string"), block)
+	return ah.LambdaCallParams(params, ast.NewIdent("string"), block, args)
 }
 
 func obfuscateByteSlice(obfRand *obfRand, isPointer bool, data []byte) *ast.CallExpr {
 	obf := getNextObfuscator(obfRand, len(data))
-	block := obf.obfuscate(obfRand.Rand, data)
+	block, extKeys := obf.obfuscate(obfRand.Rand, data)
+	params, args := externalKeysToParams(obfRand.Rand, extKeys)
 
 	if isPointer {
 		block.List = append(block.List, ah.ReturnStmt(&ast.UnaryExpr{
 			Op: token.AND,
 			X:  ast.NewIdent("data"),
 		}))
-		return ah.LambdaCall(&ast.StarExpr{
+		return ah.LambdaCallParams(params, &ast.StarExpr{
 			X: &ast.ArrayType{Elt: ast.NewIdent("byte")},
-		}, block)
+		}, block, args)
 	}
 
 	block.List = append(block.List, ah.ReturnStmt(ast.NewIdent("data")))
-	return ah.LambdaCall(&ast.ArrayType{Elt: ast.NewIdent("byte")}, block)
+	return ah.LambdaCallParams(params, &ast.ArrayType{Elt: ast.NewIdent("byte")}, block, args)
 }
 
 func obfuscateByteArray(obfRand *obfRand, isPointer bool, data []byte, length int64) *ast.CallExpr {
 	obf := getNextObfuscator(obfRand, len(data))
-	block := obf.obfuscate(obfRand.Rand, data)
+	block, extKeys := obf.obfuscate(obfRand.Rand, data)
+	params, args := externalKeysToParams(obfRand.Rand, extKeys)
 
 	arrayType := &ast.ArrayType{
 		Len: ah.IntLit(int(length)),
@@ -280,10 +283,10 @@ func obfuscateByteArray(obfRand *obfRand, isPointer bool, data []byte, length in
 	block.List = append(block.List, sliceToArray...)
 
 	if isPointer {
-		return ah.LambdaCall(&ast.StarExpr{X: arrayType}, block)
+		return ah.LambdaCallParams(params, &ast.StarExpr{X: arrayType}, block, args)
 	}
 
-	return ah.LambdaCall(arrayType, block)
+	return ah.LambdaCallParams(params, arrayType, block, args)
 }
 
 func getNextObfuscator(obfRand *obfRand, size int) obfuscator {

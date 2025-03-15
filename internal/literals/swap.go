@@ -58,7 +58,7 @@ func generateSwapCount(obfRand *mathrand.Rand, dataLen int) int {
 	return swapCount
 }
 
-func (swap) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
+func (swap) obfuscate(obfRand *mathrand.Rand, data []byte) (*ast.BlockStmt, []externalKey) {
 	swapCount := generateSwapCount(obfRand, len(data))
 	shiftKey := byte(obfRand.Uint32())
 
@@ -152,5 +152,5 @@ func (swap) obfuscate(obfRand *mathrand.Rand, data []byte) *ast.BlockStmt {
 				},
 			),
 		},
-	)
+	), nil
 }
