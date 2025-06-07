@@ -86,6 +86,7 @@ func main() {
 	flowOps()
 	typeOps()
 	genericFunc()
+	genericMethod()
 	floats()
 }
 
@@ -366,6 +367,27 @@ func genericFunc() {
 		"second": 12.1,
     }
 	sprintf(sumIntsOrFloats(floats))
+}
+
+
+
+type Number[T int | float64] struct {
+	value T
+}
+
+func (n Number[T]) Add(other Number[T]) Number[T] {
+	return Number[T]{value: n.value + other.value}
+}
+
+func genericMethod() {
+	intNum := Number[int]{value: 10}
+	floatNum := Number[float64]{value: 3.14}
+
+	result1 := intNum.Add(Number[int]{value: 5})
+	result2 := floatNum.Add(Number[float64]{value: 2.86})
+
+	fmt.Println(result1.value)
+	fmt.Println(result2.value)
 }
 
 func floats() {
