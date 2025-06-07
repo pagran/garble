@@ -206,7 +206,11 @@ func ConstToAst(val constant.Value) ast.Expr {
 	case constant.Int:
 		return &ast.BasicLit{Kind: token.INT, Value: val.ExactString()}
 	case constant.Float:
-		return &ast.BasicLit{Kind: token.FLOAT, Value: val.String()}
+		floatVal, ok := constant.Float64Val(val)
+		if !ok {
+			panic("unreachable")
+		}
+		return &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(floatVal, 'e', -1, 64)}
 	case constant.Complex:
 		return CallExprByName("complex", ConstToAst(constant.Real(val)), ConstToAst(constant.Imag(val)))
 	default:

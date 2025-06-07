@@ -86,6 +86,7 @@ func main() {
 	flowOps()
 	typeOps()
 	genericFunc()
+	floats()
 }
 
 func makeSprintf(tag string) func(vals ...interface{}) {
@@ -361,6 +362,19 @@ func genericFunc() {
 		"second": 12.1,
     }
 	sprintf(sumIntsOrFloats(floats))
+}
+
+func floats() {
+ 	var bigFloat64 float64 = 1.7976931348623157e+308
+    var smallFloat64 float64 = 5e-324
+
+    var bigFloat32 float32 = 3.4028235e+38
+    var smallFloat32 float32 = 1.4e-45
+
+    fmt.Println("Big float64:", bigFloat64)
+    fmt.Println("Smallest nonzero float64:", smallFloat64)
+    fmt.Println("Big float32:", bigFloat32)
+    fmt.Println("Smallest nonzero float32:", smallFloat32)
 }
 `
 
