@@ -1028,11 +1028,15 @@ func (fc *funcConverter) convertBlock(astFunc *AstFunc, ssaBlock *ssa.BasicBlock
 				}
 
 				var args []ssa.Value
-
 				if sigParams := closureFunc.Signature.Params(); sigParams != nil {
 					for i := range sigParams.Len() {
-						param := sigParams.At(i)
-						args = append(args, virtualParameter{ParamName: param.Name()})
+						paramName := fmt.Sprintf(fc.namePrefix+"_%d", i)
+						param := boundLit.Type.Params.List[i]
+						if len(param.Names) > 1 {
+							panic("unreachable")
+						}
+						param.Names = []*ast.Ident{ast.NewIdent(paramName)} // // Force rename all params to avoid name clash and unnamed params.
+						args = append(args, virtualParameter{ParamName: paramName})
 					}
 				}
 

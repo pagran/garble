@@ -189,6 +189,9 @@ func (r structCalls) UpdateVal(val *int)  {
 	*val = 100 
 }
 
+func (r structCalls) UnnamedNoop(int, bool)  {
+}
+
 func (r structCalls) Return1() string {
 	return "Return1"
 }
@@ -234,6 +237,9 @@ func methodOps() {
 	
 	voidBoundMethod := strct.UpdateVal
 	val := 0
+	
+	noopUnnamedBound := strct.UnnamedNoop
+	noopUnnamedBound(val, true)
 	
 	voidBoundMethod(&val)
 	sprintf("bound updated val",val)
