@@ -166,6 +166,15 @@ func iterAndMapsOps() {
 	}
 
 	sprintf(mmap["April"].String())
+	
+	
+	text := "Hello 世界 🌍"
+	for i, r := range text {
+		fmt.Printf("Index: %d, Rune: %c, Value: %d\n", i, r, r)
+		if i > 10 {
+			break
+		}
+	}
 	return
 }
 
