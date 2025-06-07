@@ -787,7 +787,7 @@ func (fc *funcConverter) convertBlock(astFunc *AstFunc, ssaBlock *ssa.BasicBlock
 							&ast.AssignStmt{
 								Lhs: []ast.Expr{ast.NewIdent(byteIdxName)},
 								Tok: token.ADD_ASSIGN,
-								Rhs: []ast.Expr{ah.CallExprByName("len", ah.CallExprByName("string", ast.NewIdent(valName)))},
+								Rhs: []ast.Expr{ah.CallExprByName("len", ah.CallExprByName("string", ah.IndexExprByExpr(ast.NewIdent(iterValName), ast.NewIdent(idxName))))},
 							},
 							&ast.IncDecStmt{X: ast.NewIdent(idxName), Tok: token.INC},
 						),

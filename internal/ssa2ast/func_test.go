@@ -161,12 +161,7 @@ func iterAndMapsOps() {
 	if v, ok := mmap["?"]; ok {
 		panic("unreachable: " + v.String())
 	}
-	for idx, s := range "hello world" {
-		sprintf(idx, s)
-	}
-
 	sprintf(mmap["April"].String())
-	
 	
 	text := "Hello 世界 🌍"
 	for i, r := range text {
@@ -175,6 +170,11 @@ func iterAndMapsOps() {
 			break
 		}
 	}
+	runeCount := 0
+    for range "Hello, 世界! 🌍" {
+        runeCount++
+    }
+    fmt.Println("Rune count:", runeCount)
 	return
 }
 
