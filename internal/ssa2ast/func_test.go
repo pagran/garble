@@ -214,6 +214,10 @@ func methodOps() {
 
 	strct.Return1()
 	strct.Return2()
+	
+	boundMethod := strct.Return1
+	
+	println("Bound method: ", boundMethod())
 
 	intrfs := returnInterfaceCalls()
 	intrfs.Return1()

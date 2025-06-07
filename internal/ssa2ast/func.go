@@ -401,11 +401,39 @@ func (fc *funcConverter) ssaValue(ssaValue ssa.Value, explicitNil bool) (expr as
 			return nil, err
 		}
 		return ah.CallExpr(&ast.ParenExpr{X: castExpr}, constExpr), nil
-	case *ssa.Parameter, *ssa.FreeVar:
+	case *ssa.Parameter, *ssa.FreeVar, virtualParameter:
 		return ast.NewIdent(val.Name()), nil
 	default:
 		return ast.NewIdent(fc.getVarName(val)), nil
 	}
+}
+
+type virtualParameter struct {
+	ParamName string
+}
+
+func (v virtualParameter) Name() string {
+	return v.ParamName
+}
+
+func (v virtualParameter) String() string {
+	return v.ParamName
+}
+
+func (v virtualParameter) Type() types.Type {
+	panic("unsupported")
+}
+
+func (v virtualParameter) Parent() *ssa.Function {
+	panic("unsupported")
+}
+
+func (v virtualParameter) Referrers() *[]ssa.Instruction {
+	panic("unsupported")
+}
+
+func (v virtualParameter) Pos() token.Pos {
+	panic("unsupported")
 }
 
 type register interface {
@@ -974,25 +1002,53 @@ func (fc *funcConverter) convertBlock(astFunc *AstFunc, ssaBlock *ssa.BasicBlock
 				stmt = defineVar(instr, &ast.UnaryExpr{Op: instr.Op, X: valExpr})
 			}
 		case *ssa.MakeClosure:
-			anonFunc := instr.Fn.(*ssa.Function)
-			anonFuncName, err := fc.getAnonFunctionName(anonFunc)
-			if err != nil {
-				return err
-			}
-			if anonFuncName == nil {
-				return fmt.Errorf("make closure for non anon func %q: %w", anonFunc.Name(), ErrUnsupported)
-			}
-
-			callExpr := &ast.CallExpr{Fun: anonFuncName}
-			for _, freeVar := range instr.Bindings {
-				varExr, err := fc.convertSsaValue(freeVar)
+			closureFunc := instr.Fn.(*ssa.Function)
+			if strings.HasSuffix(closureFunc.Name(), "$bound") {
+				if len(instr.Bindings) != 1 {
+					return fmt.Errorf("make closure for %q: %w", closureFunc.Name(), ErrUnsupported)
+				}
+				boundLit, err := fc.convertSignatureToFuncLit(closureFunc.Signature)
 				if err != nil {
 					return err
 				}
-				callExpr.Args = append(callExpr.Args, varExr)
-			}
 
-			stmt = defineVar(instr, callExpr)
+				var args []ssa.Value
+
+				if sigParams := closureFunc.Signature.Params(); sigParams != nil {
+					for i := range sigParams.Len() {
+						param := sigParams.At(i)
+						args = append(args, virtualParameter{ParamName: param.Name()})
+					}
+				}
+
+				boundCall, err := fc.convertCall(ssa.CallCommon{
+					Value:  instr.Bindings[0],
+					Method: closureFunc.Object().(*types.Func),
+					Args:   args,
+				})
+
+				boundLit.Body = ah.BlockStmt(ah.ReturnStmt(boundCall))
+
+				stmt = defineVar(instr, boundLit)
+			} else {
+				anonFuncName, err := fc.getAnonFunctionName(closureFunc)
+				if err != nil {
+					return err
+				}
+				if anonFuncName == nil {
+					return fmt.Errorf("make closure for %q: %w", closureFunc.Name(), ErrUnsupported)
+				}
+				callExpr := &ast.CallExpr{Fun: anonFuncName}
+				for _, freeVar := range instr.Bindings {
+					varExr, err := fc.convertSsaValue(freeVar)
+					if err != nil {
+						return err
+					}
+					callExpr.Args = append(callExpr.Args, varExr)
+				}
+
+				stmt = defineVar(instr, callExpr)
+			}
 		case *ssa.RunDefers, *ssa.DebugRef:
 			// ignored
 			continue
