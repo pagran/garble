@@ -372,6 +372,14 @@ func sumIntsOrFloats[K comparable, V int64 | float64](m map[K]V) V {
     return s
 }
 
+func firstOrDefaultIfEquals[T comparable](a, b T) T {
+	if a == b {
+		var zero T
+		return zero
+	}
+	return a
+}
+
 func genericFunc() {
 	sprintf := makeSprintf("genericFunc")
 	
@@ -386,6 +394,10 @@ func genericFunc() {
 		"second": 12.1,
     }
 	sprintf(sumIntsOrFloats(floats))
+	
+	sprintf(firstOrDefaultIfEquals(1, 2))
+	sprintf(firstOrDefaultIfEquals(1, 1))
+	sprintf(firstOrDefaultIfEquals(2, 1))
 }
 
 

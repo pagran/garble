@@ -383,7 +383,12 @@ func (fc *funcConverter) ssaValue(ssaValue ssa.Value, explicitNil bool) (expr as
 				return &ast.CompositeLit{Type: typExpr}, nil
 			}
 
-			constExpr = ast.NewIdent("nil")
+			if typParam, ok := typ.(*types.TypeParam); ok {
+				// Workaround nil (default) value for type parameters
+				constExpr = &ast.StarExpr{X: ah.CallExprByName("new", ast.NewIdent(typParam.Obj().Name()))}
+			} else {
+				constExpr = ast.NewIdent("nil")
+			}
 			if !explicitNil {
 				return constExpr, nil
 			}
