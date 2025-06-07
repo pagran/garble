@@ -1028,7 +1028,16 @@ func (fc *funcConverter) convertBlock(astFunc *AstFunc, ssaBlock *ssa.BasicBlock
 					Args:   args,
 				})
 
-				boundLit.Body = ah.BlockStmt(ah.ReturnStmt(boundCall))
+				if err != nil {
+					return err
+				}
+
+				boundLit.Body = ah.BlockStmt()
+				if closureFunc.Signature.Results().Len() > 0 {
+					boundLit.Body.List = append(boundLit.Body.List, ah.ReturnStmt(boundCall))
+				} else {
+					boundLit.Body.List = append(boundLit.Body.List, &ast.ExprStmt{X: boundCall})
+				}
 
 				stmt = defineVar(instr, boundLit)
 			} else {

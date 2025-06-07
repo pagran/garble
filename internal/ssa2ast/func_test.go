@@ -176,6 +176,10 @@ type interfaceCalls interface {
 type structCalls struct {
 }
 
+func (r structCalls) UpdateVal(val *int)  {
+	*val = 100 
+}
+
 func (r structCalls) Return1() string {
 	return "Return1"
 }
@@ -217,8 +221,14 @@ func methodOps() {
 	strct.Return2()
 	
 	boundMethod := strct.Return1
+	sprintf("Bound method", boundMethod())
 	
-	println("Bound method: ", boundMethod())
+	voidBoundMethod := strct.UpdateVal
+	val := 0
+	
+	voidBoundMethod(&val)
+	sprintf("bound updated val",val)
+	
 
 	intrfs := returnInterfaceCalls()
 	intrfs.Return1()
