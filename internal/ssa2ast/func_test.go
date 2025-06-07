@@ -88,6 +88,7 @@ func main() {
 	genericFunc()
 	genericMethod()
 	floats()
+	genericTypeAliases()
 }
 
 func makeSprintf(tag string) func(vals ...interface{}) {
@@ -438,6 +439,22 @@ func floats() {
     fmt.Println("Smallest nonzero float64:", smallFloat64)
     fmt.Println("Big float32:", bigFloat32)
     fmt.Println("Smallest nonzero float32:", smallFloat32)
+}
+
+
+
+type Matrix[T any] [][]T
+
+func (m Matrix[T]) Print() {
+	for i, row := range m {
+		fmt.Printf("Row %d: %v\n", i, row)
+	}
+}
+
+
+func genericTypeAliases()  {
+ 	matrix := Matrix[int]{{1, 2}, {3, 4}}
+	matrix.Print()
 }
 `
 

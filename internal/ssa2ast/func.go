@@ -223,7 +223,11 @@ func (fc *funcConverter) convertCall(callCommon ssa.CallCommon) (*ast.CallExpr, 
 				if err != nil {
 					return nil, err
 				}
-				callExpr.Fun = ah.SelectExpr(recvExpr, methodName)
+				typeExpr, err := fc.tc.Convert(callCommon.Args[0].Type())
+				if err != nil {
+					return nil, err
+				}
+				callExpr.Fun = ah.SelectExpr(&ast.ParenExpr{X: ah.CallExpr(typeExpr, recvExpr)}, methodName)
 			} else {
 				if val.Pkg != nil {
 					if pkgIdent := fc.importNameResolver(val.Pkg.Pkg); pkgIdent != nil {
