@@ -129,8 +129,9 @@ type AstBlock struct {
 }
 
 type AstFunc struct {
-	Vars   map[string]types.Type
-	Blocks []*AstBlock
+	Vars    map[string]types.Type
+	Blocks  []*AstBlock
+	Recover *AstBlock
 }
 
 func isVoidType(typ types.Type) bool {
@@ -1197,6 +1198,12 @@ func (fc *funcConverter) convertToStmts(ssaFunc *ssa.Function) ([]ast.Stmt, erro
 	}
 	for i := range f.Blocks {
 		f.Blocks[i] = &AstBlock{Index: ssaFunc.Blocks[i].Index}
+		if ssaFunc.Recover == ssaFunc.Blocks[i] {
+			if f.Recover != nil {
+				return nil, fmt.Errorf("multiple recover blocks in %v: %w", ssaFunc, ErrUnsupported)
+			}
+			f.Recover = f.Blocks[i]
+		}
 	}
 
 	for i, ssaBlock := range ssaFunc.Blocks {
@@ -1242,7 +1249,11 @@ func (fc *funcConverter) convertToStmts(ssaFunc *ssa.Function) ([]ast.Stmt, erro
 		}})
 	}
 
+	var blocksStmts []ast.Stmt
 	for _, block := range f.Blocks {
+		if block == f.Recover { // recover block handled separately
+			continue
+		}
 		if fc.markerInstrCallback != nil {
 			var newBody []ast.Stmt
 			for _, stmt := range block.Body {
@@ -1258,10 +1269,69 @@ func (fc *funcConverter) convertToStmts(ssaFunc *ssa.Function) ([]ast.Stmt, erro
 		blockStmts := &ast.BlockStmt{List: append(block.Body, block.Phi...)}
 		blockStmts.List = append(blockStmts.List, block.Exit)
 		if block.HasRefs {
-			stmts = append(stmts, &ast.LabeledStmt{Label: fc.getLabelName(block.Index), Stmt: blockStmts})
+			blocksStmts = append(blocksStmts, &ast.LabeledStmt{Label: fc.getLabelName(block.Index), Stmt: blockStmts})
 		} else {
-			stmts = append(stmts, blockStmts)
+			blocksStmts = append(blocksStmts, blockStmts)
 		}
+	}
+
+	if ssaFunc.Recover != nil {
+		if len(f.Recover.Phi) > 0 {
+			return nil, fmt.Errorf("recover block has phi: %w", ErrUnsupported)
+		}
+
+		var recoverResults []*types.Var
+		for v := range ssaFunc.Signature.Results().Variables() {
+			recoverResults = append(recoverResults, types.NewVar(token.NoPos, v.Pkg(), "", v.Type()))
+		}
+		recoverResults = append(recoverResults, types.NewVar(token.NoPos, nil, "", types.Typ[types.Bool]))
+
+		for _, block := range f.Blocks {
+			if block == f.Recover {
+				continue
+			}
+			if returnStmt, ok := block.Exit.(*ast.ReturnStmt); ok {
+				returnStmt.Results = append(returnStmt.Results, ast.NewIdent("true"))
+			}
+		}
+
+		recoverWrapperType := types.NewSignatureType(nil, nil, nil, nil, types.NewTuple(recoverResults...), false)
+		recoverWrapper, err := fc.convertSignatureToFuncLit(recoverWrapperType)
+		if err != nil {
+			return nil, err
+		}
+
+		recoverWrapper.Body = ah.BlockStmt(blocksStmts...)
+
+		var recoverVarNames []string
+		for i := range recoverResults {
+			recoverVarNames = append(recoverVarNames, fmt.Sprintf(fc.namePrefix+"recover_%d", i))
+		}
+
+		var defineRecoverVars, returnRecoverVars []ast.Expr
+		for i, name := range recoverVarNames {
+			defineRecoverVars = append(defineRecoverVars, ast.NewIdent(name))
+			if i < len(recoverVarNames)-1 {
+				returnRecoverVars = append(returnRecoverVars, ast.NewIdent(name))
+			}
+		}
+
+		recoveryResults := &ast.AssignStmt{
+			Lhs: defineRecoverVars,
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{ah.CallExpr(recoverWrapper)},
+		}
+		// Wrap all blocks inside the function for proper recover handling.
+		stmts = append(stmts, recoveryResults)
+		stmts = append(stmts, &ast.IfStmt{
+			Cond: ast.NewIdent(recoverVarNames[len(recoverVarNames)-1]),
+			Body: ah.BlockStmt(ah.ReturnStmt(returnRecoverVars...)),
+		})
+
+		stmts = append(stmts, f.Recover.Body...)
+		stmts = append(stmts, f.Recover.Exit)
+	} else {
+		stmts = append(stmts, blocksStmts...)
 	}
 	return stmts, nil
 }

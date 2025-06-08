@@ -89,6 +89,7 @@ func main() {
 	genericMethod()
 	floats()
 	genericTypeAliases()
+	recoverMethod()
 }
 
 func makeSprintf(tag string) func(vals ...interface{}) {
@@ -455,6 +456,25 @@ func (m Matrix[T]) Print() {
 func genericTypeAliases()  {
  	matrix := Matrix[int]{{1, 2}, {3, 4}}
 	matrix.Print()
+}
+
+func recoverMethod() {
+		f := func(i int) (s string) {
+		defer func() {
+			recover()
+			s = "recovered"
+		}()
+
+		if i%2 == 0 {
+			panic("test")
+		}
+		if i%3 == 0 {
+			panic("test")
+		}
+		return "1"
+	}
+
+	fmt.Println(f(333))
 }
 `
 
